@@ -89,3 +89,40 @@ export function writeConfig(config: Partial<Config>): Config {
 export function maskToken(token: string): string {
   if (!token || token.length <= 4) {
     return '****';
+  }
+  return '****' + token.slice(-4);
+}
+
+export function addToHistory(post: Omit<PostHistory, 'id' | 'sentAt'>): void {
+  const newPost: PostHistory = {
+    ...post,
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+    sentAt: new Date().toISOString(),
+  };
+
+  if (isProduction()) {
+    memoryHistory = [newPost, ...memoryHistory].slice(0, 50);
+    return;
+  }
+
+  try {
+    const config = readConfig();
+    config.history = [newPost, ...config.history].slice(0, 50);
+    writeConfig(config);
+  } catch {
+    console.error('Error adding to history');
+  }
+}
+
+export function getHistory(limit: number = 5): PostHistory[] {
+  if (isProduction()) {
+    return memoryHistory.slice(0, limit);
+  }
+  const config = readConfig();
+  return config.history.slice(0, limit);
+}
+
+export function isConfigured(): boolean {
+  const config = readConfig();
+  return !!(config.botToken && config.chatId);
+}
